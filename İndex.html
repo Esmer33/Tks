@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Yüz Değiştirme</title>
+  <script defer src="https://cdn.jsdelivr.net/npm/face-api.js"></script>
+</head>
+<body>
+  <h2>Yüz Değiştirici</h2>
+  <input type="file" id="src" accept="image/*">
+  <input type="file" id="target" accept="image/*"><br><br>
+  <canvas id="canvas"></canvas>
+
+  <script>
+    const canvas = document.getElementById('canvas')
+    const ctx = canvas.getContext('2d')
+
+    Promise.all([
+      faceapi.nets.tinyFaceDetector.loadFromUri('/models'),
+      faceapi.nets.faceLandmark68Net.loadFromUri('/models')
+    ]).then(() => console.log("Modeller yüklendi"))
+
+    const input1 = document.getElementById('src')
+    const input2 = document.getElementById('target')
+
+    function loadImage(input) {
+      return new Promise((resolve) => {
+        const reader = new FileReader()
+        reader.onload = () => {
+          const img = new Image()
+          img.onload = () => resolve(img)
+          img.src = reader.result
+        }
+        reader.readAsDataURL(input.files[0])
+      })
+    }
+
+    async function swapFaces() {
+      const img1 = await loadImage(input1)
+      const img2 = await loadImage(input2)
+
+      canvas.width = img2.width
+      canvas.height = img2.height
+      ctx.drawImage(img2, 0, 0)
+
+      const det1 = await faceapi.detectSingleFace(img1, new faceapi.TinyFaceDetectorOptions()).withFaceLandmarks()
+      const det2 = await faceapi.detectSingleFace(img2, new faceapi.TinyFaceDetectorOptions()).withFaceLandmarks()
+      if (!det1 || !det2) return alert("Yüz algılanamadı")
+
+      const { box } = det2.detection
+      ctx.drawImage(img1, box.x, box.y, box.width, box.height)
+    }
+
+    input1.onchange = swapFaces
+    input2.onchange = swapFaces
+  </script>
+</body>
+</html>
